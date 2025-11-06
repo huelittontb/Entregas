@@ -6,24 +6,46 @@ on:
       - main
   workflow_dispatch:
 
+name: Build APK
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
+      # 1️⃣ Baixa o código do repositório
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # 2️⃣ Faz o build usando o container oficial do Kivy com Buildozer
       - name: Build with Buildozer Docker image
         uses: addnab/docker-run-action@v3
         with:
           image: kivy/buildozer
-          # ⚠️ Define a variável diretamente no container
-          options: -v ${{ github.workspace }}:/home/user/app -e BUILDOZER_ALLOW_ROOT=1
+          options: -v ${{ github.workspace }}:/home/user/app
           run: |
             cd /home/user/app
-            buildozer android debug
+            echo "⚙️ Iniciando build com permissão root forçada..."
+            export BUILDOZER_ALLOW_ROOT=1
+            BUILDOZER_ALLOW_ROOT=1 python3 -m buildozer android debug
 
+      # 3️⃣ Renomeia o APK com versão e data
+      - name: Rename APK
+        run: |
+          cd bin
+          VERSION=$(grep "version =" ../buildozer.spec | awk '{print $3}')
+          DATE=$(date +%Y-%m-%d)
+          APK_NAME="Entregas_v${VERSION}_${DATE}.apk"
+          mv *.apk "$APK_NAME"
+          echo "✅ APK renomeado para: $APK_NAME"
+
+      # 4️⃣ Faz upload do APK como artifact no GitHub Actions
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
