@@ -14,17 +14,18 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Build APK inside Kivy Docker (sem root)
+      - name: Build APK (root com BUILDOZER_ALLOW_ROOT=1)
         uses: addnab/docker-run-action@v3
         with:
           image: kivy/buildozer
-          options: -v ${{ github.workspace }}:/home/user/app -w /home/user/app --user 1000:1000
+          options: -v ${{ github.workspace }}:/home/user/app -w /home/user/app
           run: |
             echo "⚙️ Limpando build anterior..."
-            rm -rf .buildozer bin
+            rm -rf .buildozer bin || true
 
-            echo "🚀 Iniciando build com usuário normal..."
-            buildozer android debug
+            echo "🚀 Forçando buildozer como root (sem prompt)..."
+            export BUILDOZER_ALLOW_ROOT=1
+            python3 -m buildozer android debug
 
       - name: Rename APK
         run: |
