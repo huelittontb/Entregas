@@ -1,4 +1,4 @@
-name: Build APK (Kivy + Buildozer)
+name: Build Android APK
 
 on:
   push:
@@ -8,91 +8,66 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-
+    container:
+      image: kivy/buildozer:latest
     steps:
-      - name: 📂 Clonando repositório
+      - name: 🧰 Checkout do código
         uses: actions/checkout@v4
 
-      - name: 🐳 Executando build no container Buildozer
-        uses: addnab/docker-run-action@v3
-        with:
-          image: kivy/buildozer:latest
-          options: -v ${{ github.workspace }}:/home/user/app
-          run: |
-            echo "⚙️ Limpando build anterior..."
-            cd /home/user/app
-            rm -rf .buildozer bin || true
+      - name: ⚙️ Configurando variáveis de ambiente
+        run: |
+          echo "ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
+          echo "ANDROID_NDK_HOME=$HOME/android-ndk" >> $GITHUB_ENV
+          echo "PATH=$PATH:$HOME/.local/bin:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools" >> $GITHUB_ENV
 
-            echo "⬇️ Instalando dependências..."
-            pip install --upgrade pip buildozer
+      - name: 📦 Instalando dependências
+        run: |
+          python3 -m venv .venv
+          source .venv/bin/activate
+          pip install --upgrade pip
+          pip install buildozer cython==0.29.37
 
-            echo "🩹 Ignorando check_root()..."
-            BUILD_PATH=$(python3 -c "import buildozer, os; print(os.path.dirname(buildozer.__file__))")
-            sed -i '/def check_root(self):/a\        return' "$BUILD_PATH/__init__.py"
+      - name: 📥 Instalando Android SDK e NDK
+        run: |
+          export ANDROID_SDK_ROOT=$HOME/android-sdk
+          export ANDROID_NDK_HOME=$HOME/android-ndk
+          mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
+          cd $ANDROID_SDK_ROOT/cmdline-tools
+          echo "📦 Baixando Command Line Tools..."
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O tools.zip
+          unzip -q tools.zip
+          mv cmdline-tools latest
+          rm tools.zip
+          cd $GITHUB_WORKSPACE
 
-            echo "📦 Configurando SDK..."
-            export ANDROID_SDK_ROOT=/root/android-sdk
-            export ANDROID_NDK_HOME=/root/android-ndk
-            export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH
+          echo "✅ Aceitando licenças..."
+          yes | sdkmanager --sdk_root=$ANDROID_SDK_ROOT --licenses || true
 
-            echo "⬇️ Instalando dependências do sistema..."
-            apt-get update -qq
-            apt-get install -y wget unzip openjdk-17-jdk
+          echo "⬇️ Instalando pacotes necessários..."
+          yes | sdkmanager --sdk_root=$ANDROID_SDK_ROOT \
+            "platform-tools" \
+            "platforms;android-35" \
+            "build-tools;35.0.0" \
+            "ndk;25.1.8937393" \
+            "cmdline-tools;latest"
 
-            echo "📥 Instalando Command Line Tools..."
-            mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
-            cd $ANDROID_SDK_ROOT/cmdline-tools
-            wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O tools.zip
-            unzip -q tools.zip
-            mv cmdline-tools latest
-            rm tools.zip
-            cd /home/user/app
+          echo "🔧 Corrigindo links do SDK/NDK..."
+          mkdir -p .buildozer/android/platform
+          ln -sfn $ANDROID_SDK_ROOT .buildozer/android/platform/android-sdk
+          ln -sfn $ANDROID_NDK_HOME .buildozer/android/platform/android-ndk-r25b
 
-            echo "✅ Aceitando licenças do Android SDK..."
-            yes | sdkmanager --sdk_root=$ANDROID_SDK_ROOT --licenses || true
+      - name: 🧹 Limpando builds anteriores
+        run: |
+          rm -rf .buildozer bin
 
-            echo "⬇️ Instalando componentes necessários..."
-            yes | sdkmanager --sdk_root=$ANDROID_SDK_ROOT \
-              "platform-tools" \
-              "platforms;android-35" \
-              "build-tools;35.0.0" \
-              "ndk;25.1.8937393" \
-              "cmdline-tools;latest"
+      - name: 🚀 Compilando APK
+        run: |
+          source .venv/bin/activate
+          echo "📲 Iniciando buildozer..."
+          buildozer -v android debug
 
-            echo "🔧 Garantindo que Buildozer use o SDK correto..."
-            mkdir -p .buildozer/android/platform
-            ln -sfn $ANDROID_SDK_ROOT .buildozer/android/platform/android-sdk
-            ln -sfn $ANDROID_NDK_HOME .buildozer/android/platform/android-ndk-r25b
-
-            echo "🛠️ Ajustando buildozer.spec (build_tools_version=35.0.0)..."
-            if grep -q "build_tools_version" buildozer.spec; then
-              sed -i 's/^build_tools_version = .*/build_tools_version = 35.0.0/' buildozer.spec
-            else
-              echo "build_tools_version = 35.0.0" >> buildozer.spec
-            fi
-
-            echo "🚀 Compilando APK..."
-            buildozer -v android debug | tee buildozer.log || (echo "❌ Falha na compilação"; exit 1)
-
-            echo "📦 Procurando APK gerado..."
-            mkdir -p bin || true
-            APK_PATH=$(find . -name "*.apk" | head -n 1)
-            if [ -f "$APK_PATH" ]; then
-              cp "$APK_PATH" bin/app-release.apk
-              echo "✅ APK gerado com sucesso: bin/app-release.apk"
-            else
-              echo "❌ Nenhum APK encontrado!"
-              exit 1
-            fi
-
-      - name: 💾 Salvando buildozer.log
-        uses: actions/upload-artifact@v4
-        with:
-          name: buildozer-log
-          path: buildozer.log
-
-      - name: 📱 Publicando APK
+      - name: 📦 Salvando artefato APK
         uses: actions/upload-artifact@v4
         with:
           name: app-release
-          path: bin/app-release.apk
+          path: bin/*.apk
