@@ -11,22 +11,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout do repositório
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2️⃣ Usa o container oficial do Kivy com Buildozer pré-instalado
       - name: Build with Buildozer Docker image
         uses: addnab/docker-run-action@v3
         with:
           image: kivy/buildozer
-          options: -v ${{ github.workspace }}:/home/user/app
+          # ⚠️ Define a variável diretamente no container
+          options: -v ${{ github.workspace }}:/home/user/app -e BUILDOZER_ALLOW_ROOT=1
           run: |
             cd /home/user/app
-            export BUILDOZER_ALLOW_ROOT=1
             buildozer android debug
 
-      # 3️⃣ Faz upload do APK gerado
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
