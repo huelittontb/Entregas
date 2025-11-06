@@ -13,7 +13,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Build APK using Buildozer (with root allowed)
+      - name: Build APK using Buildozer (force root allowed)
         uses: addnab/docker-run-action@v3
         with:
           image: kivy/buildozer:latest
@@ -22,19 +22,21 @@ jobs:
             echo "⚙️ Limpando build anterior..."
             rm -rf .buildozer bin || true
 
-            echo "⬇️ Atualizando Buildozer..."
-            pip install --upgrade pip buildozer==1.5.0
+            echo "⬇️ Instalando dependências..."
+            pip install --upgrade pip buildozer
 
-            echo "🚀 Iniciando build como root (sem prompt)..."
-            export BUILDOZER_ALLOW_ROOT=1
+            echo "🚀 Forçando execução com --allow-root..."
+            # usa --allow-root para evitar prompt interativo
+            buildozer --allow-root -v android debug || exit 1
 
-            # Executa o buildozer diretamente, sem interação
-            python3 -m buildozer -v android debug
-
-            echo "✅ Build finalizado com sucesso."
+            echo "✅ Build finalizado."
 
       - name: Rename APK
+        if: success()
         run: |
+          if [ ! -d "bin" ]; then
+            echo "❌ Nenhum APK foi gerado."; exit 1;
+          fi
           cd bin
           VERSION=$(grep "version =" ../buildozer.spec | awk '{print $3}')
           DATE=$(date +%Y-%m-%d)
@@ -43,6 +45,7 @@ jobs:
           echo "✅ APK renomeado para: $APK_NAME"
 
       - name: Upload APK artifact
+        if: success()
         uses: actions/upload-artifact@v4
         with:
           name: Entregas-APK
