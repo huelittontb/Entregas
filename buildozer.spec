@@ -6,6 +6,9 @@ source.dir = .
 source.include_exts = py,png,jpg,kv,atlas,xls,xlsx
 source.main = main.py
 version = 1.0.0
+android.build_tools_version = 35.0.0
+android.sdk_path = /root/android-sdk
+android.ndk_path = /root/android-ndk
 
 # Dependências
 requirements = python3==3.10.12, kivy==2.2.1, openpyxl, cython==0.29.36, git+https://github.com/tito/pyjnius.git
