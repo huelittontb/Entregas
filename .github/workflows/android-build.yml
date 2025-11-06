@@ -13,7 +13,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Build APK with updated Buildozer
+      - name: Build APK using Buildozer (with root allowed)
         uses: addnab/docker-run-action@v3
         with:
           image: kivy/buildozer:latest
@@ -22,18 +22,14 @@ jobs:
             echo "⚙️ Limpando build anterior..."
             rm -rf .buildozer bin || true
 
-            echo "⬇️ Atualizando Buildozer e dependências..."
+            echo "⬇️ Atualizando Buildozer..."
             pip install --upgrade pip buildozer==1.5.0
 
             echo "🚀 Iniciando build como root (sem prompt)..."
             export BUILDOZER_ALLOW_ROOT=1
 
-            python3 - <<'PYCODE'
-import os
-os.environ["BUILDOZER_ALLOW_ROOT"] = "1"
-from buildozer.scripts.client import main
-main()
-PYCODE
+            # Executa o buildozer diretamente, sem interação
+            python3 -m buildozer -v android debug
 
             echo "✅ Build finalizado com sucesso."
 
