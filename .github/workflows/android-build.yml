@@ -34,9 +34,29 @@ jobs:
             mkdir -p $ANDROID_SDK_ROOT/cmdline-tools/latest/bin
             export PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools
 
-            # Aceitar licenças e instalar ferramentas
+            echo "⬇️ Instalando ferramentas do SDK (sdkmanager, platform-tools, build-tools)..."
+            apt-get update -qq
+            apt-get install -y unzip wget openjdk-17-jdk
+
+            # Instalar manualmente o commandlinetools (sdkmanager)
+            mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
+            cd $ANDROID_SDK_ROOT/cmdline-tools
+            wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O tools.zip
+            unzip -q tools.zip
+            mv cmdline-tools latest
+            rm tools.zip
+            cd /home/user/app
+
+            echo "✅ Aceitando licenças..."
             yes | sdkmanager --sdk_root=$ANDROID_SDK_ROOT --licenses || true
-            yes | sdkmanager --sdk_root=$ANDROID_SDK_ROOT "platform-tools" "platforms;android-36" "build-tools;36.1.0"
+
+            echo "📦 Instalando pacotes essenciais..."
+            yes | sdkmanager --sdk_root=$ANDROID_SDK_ROOT \
+              "platform-tools" \
+              "platforms;android-36" \
+              "build-tools;36.1.0" \
+              "cmdline-tools;latest" \
+              "ndk;25.1.8937393"
 
             echo "🚀 Compilando APK..."
             buildozer -v android debug || (echo "❌ Falha na compilação"; exit 1)
