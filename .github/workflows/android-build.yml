@@ -10,16 +10,17 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 🧱 Checkout código
+      - name: 📂 Clonando repositório
         uses: actions/checkout@v4
 
-      - name: 🐳 Build APK com Buildozer
+      - name: 🐳 Preparando container Buildozer
         uses: addnab/docker-run-action@v3
         with:
           image: kivy/buildozer:latest
-          options: -v ${{ github.workspace }}:/home/user/app -w /home/user/app --user root
+          options: -v ${{ github.workspace }}:/home/user/app
           run: |
             echo "⚙️ Limpando build anterior..."
+            cd /home/user/app
             rm -rf .buildozer bin || true
 
             echo "⬇️ Instalando dependências..."
@@ -30,7 +31,8 @@ jobs:
             sed -i '/def check_root(self):/a\        return' "$BUILD_PATH/__init__.py"
 
             echo "📦 Configurando SDK e variáveis..."
-            export ANDROID_SDK_ROOT=/root/.buildozer/android/platform/android-sdk
+            export ANDROID_SDK_ROOT=/root/android-sdk
+            export ANDROID_NDK_HOME=/root/android-ndk
             export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH
 
             echo "⬇️ Instalando dependências do sistema..."
@@ -57,8 +59,13 @@ jobs:
               "ndk;25.1.8937393" \
               "cmdline-tools;latest"
 
+            echo "🔧 Configurando Buildozer para usar o SDK correto..."
+            mkdir -p .buildozer/android/platform
+            ln -sfn $ANDROID_SDK_ROOT .buildozer/android/platform/android-sdk
+            ln -sfn $ANDROID_NDK_HOME .buildozer/android/platform/android-ndk-r25b
+
             echo "🚀 Compilando APK..."
-            buildozer -v android debug || (echo "❌ Falha na compilação"; exit 1)
+            buildozer -v android debug | tee buildozer.log || (echo "❌ Falha na compilação"; exit 1)
 
             echo "📦 Procurando APK gerado..."
             mkdir -p bin || true
@@ -71,7 +78,13 @@ jobs:
               exit 1
             fi
 
-      - name: 📤 Upload do APK como artefato
+      - name: 💾 Salvando buildozer.log
+        uses: actions/upload-artifact@v4
+        with:
+          name: buildozer-log
+          path: buildozer.log
+
+      - name: 📱 Publicando APK
         uses: actions/upload-artifact@v4
         with:
           name: app-release
