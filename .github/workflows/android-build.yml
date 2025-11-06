@@ -25,20 +25,19 @@ jobs:
             echo "⬇️ Instalando dependências..."
             pip install --upgrade pip buildozer
 
-            echo "🩹 Aplicando patch para ignorar check_root()..."
+            echo "🩹 Ignorando check_root()..."
             BUILD_PATH=$(python3 -c "import buildozer, os; print(os.path.dirname(buildozer.__file__))")
             sed -i '/def check_root(self):/a\        return' "$BUILD_PATH/__init__.py"
 
-            echo "📦 Configurando SDK e aceitando licenças..."
+            echo "📦 Configurando SDK e variáveis..."
             export ANDROID_SDK_ROOT=/root/.buildozer/android/platform/android-sdk
-            mkdir -p $ANDROID_SDK_ROOT/cmdline-tools/latest/bin
-            export PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools
+            export PATH=$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH
 
-            echo "⬇️ Instalando ferramentas do SDK (sdkmanager, platform-tools, build-tools)..."
+            echo "⬇️ Instalando dependências do sistema..."
             apt-get update -qq
-            apt-get install -y unzip wget openjdk-17-jdk
+            apt-get install -y wget unzip openjdk-17-jdk
 
-            # Instalar manualmente o commandlinetools (sdkmanager)
+            echo "📥 Instalando Android Command Line Tools..."
             mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
             cd $ANDROID_SDK_ROOT/cmdline-tools
             wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O tools.zip
@@ -47,16 +46,16 @@ jobs:
             rm tools.zip
             cd /home/user/app
 
-            echo "✅ Aceitando licenças..."
+            echo "✅ Aceitando todas as licenças..."
             yes | sdkmanager --sdk_root=$ANDROID_SDK_ROOT --licenses || true
 
-            echo "📦 Instalando pacotes essenciais..."
+            echo "⬇️ Instalando componentes do SDK..."
             yes | sdkmanager --sdk_root=$ANDROID_SDK_ROOT \
               "platform-tools" \
-              "platforms;android-36" \
-              "build-tools;36.1.0" \
-              "cmdline-tools;latest" \
-              "ndk;25.1.8937393"
+              "platforms;android-35" \
+              "build-tools;35.0.0" \
+              "ndk;25.1.8937393" \
+              "cmdline-tools;latest"
 
             echo "🚀 Compilando APK..."
             buildozer -v android debug || (echo "❌ Falha na compilação"; exit 1)
@@ -66,7 +65,7 @@ jobs:
             APK_PATH=$(find . -name "*.apk" | head -n 1)
             if [ -f "$APK_PATH" ]; then
               cp "$APK_PATH" bin/app-release.apk
-              echo "✅ APK gerado em: bin/app-release.apk"
+              echo "✅ APK gerado com sucesso em: bin/app-release.apk"
             else
               echo "❌ Nenhum APK encontrado!"
               exit 1
