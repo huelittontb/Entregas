@@ -11,11 +11,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Baixa o código do repositório
+      # 1️⃣ Baixa o repositório
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          submodules: 'false'  # impede inicialização de submódulos bugados
 
-      # 2️⃣ Faz o build usando o container oficial do Kivy com Buildozer
+      # 2️⃣ Usa a imagem oficial do Kivy com Buildozer
       - name: Build with Buildozer Docker image
         uses: addnab/docker-run-action@v3
         with:
@@ -23,8 +25,15 @@ jobs:
           options: -v ${{ github.workspace }}:/home/user/app
           run: |
             cd /home/user/app
-            echo "⚙️ Iniciando build com permissão root forçada..."
+
+            # 🧹 Limpa build anterior
+            rm -rf .buildozer bin
+
+            # ⚙️ Corrige permissão root e evita erro de submódulo
             export BUILDOZER_ALLOW_ROOT=1
+            export BUILDOZER_NOSUBMODULES=1
+
+            echo "🚀 Iniciando build do APK..."
             BUILDOZER_ALLOW_ROOT=1 python3 -m buildozer android debug
 
       # 3️⃣ Renomeia o APK com versão e data
@@ -37,7 +46,7 @@ jobs:
           mv *.apk "$APK_NAME"
           echo "✅ APK renomeado para: $APK_NAME"
 
-      # 4️⃣ Faz upload do APK como artifact no GitHub Actions
+      # 4️⃣ Envia o APK gerado como artifact
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
