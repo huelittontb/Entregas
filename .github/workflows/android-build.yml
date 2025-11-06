@@ -1,0 +1,36 @@
+name: Build Android APK (Buildozer Docker)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Run Buildozer inside Docker (kivy/buildozer)
+        uses: addnab/docker-run-action@v3
+        with:
+          image: kivy/buildozer:latest
+          options: --privileged
+          run: |
+            set -e
+            cd /github/workspace
+            echo "==> Limpando builds antigos"
+            rm -rf .buildozer bin
+            echo "==> Iniciando build"
+            buildozer -v android debug
+            echo "==> Build finalizado"
+            mkdir -p build-artifacts
+            cp -v bin/*.apk build-artifacts/ || true
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: entregas-apk
+          path: build-artifacts/
+

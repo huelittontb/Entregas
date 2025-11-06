@@ -1,0 +1,47 @@
+<Menu>:
+    orientation: "vertical"
+    padding: 30
+    spacing: 15
+
+    Label:
+        text: "Sistema de Entregas"
+        font_size: "24sp"
+        bold: True
+        size_hint_y: None
+        height: 60
+
+    Button:
+        text: "1 - Adicionar entrega"
+        font_size: "18sp"
+        size_hint_y: None
+        height: 60
+        on_press: root.adicionar_entrega()
+
+    Button:
+        text: "2 - Listar entregas do dia"
+        font_size: "18sp"
+        size_hint_y: None
+        height: 60
+        on_press: root.listar_entregas()
+
+    Button:
+        text: "3 - Listar bairros"
+        font_size: "18sp"
+        size_hint_y: None
+        height: 60
+        on_press: root.listar_bairros()
+
+    Button:
+        text: "4 - Gerar relatório diário"
+        font_size: "18sp"
+        size_hint_y: None
+        height: 60
+        on_press: root.gerar_relatorio()
+
+    Button:
+        text: "Sair"
+        font_size: "18sp"
+        size_hint_y: None
+        height: 60
+        on_press: app.stop()
+
