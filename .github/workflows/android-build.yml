@@ -15,26 +15,28 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          submodules: 'false'  # impede inicialização de submódulos bugados
+          submodules: 'false'
 
-      # 2️⃣ Usa a imagem oficial do Kivy com Buildozer
-      - name: Build with Buildozer Docker image
+      # 2️⃣ Usa o container do Kivy com Buildozer
+      - name: Build APK inside Kivy Docker
         uses: addnab/docker-run-action@v3
         with:
           image: kivy/buildozer
           options: -v ${{ github.workspace }}:/home/user/app
           run: |
             cd /home/user/app
-
-            # 🧹 Limpa build anterior
+            echo "⚙️ Limpando build anterior..."
             rm -rf .buildozer bin
 
-            # ⚙️ Corrige permissão root e evita erro de submódulo
-            export BUILDOZER_ALLOW_ROOT=1
-            export BUILDOZER_NOSUBMODULES=1
+            echo "🚀 Iniciando build (forçando modo root)..."
 
-            echo "🚀 Iniciando build do APK..."
-            BUILDOZER_ALLOW_ROOT=1 python3 -m buildozer android debug
+            # Cria script temporário que roda o buildozer com variável garantida
+            echo '#!/bin/bash' > run_build.sh
+            echo 'export BUILDOZER_ALLOW_ROOT=1' >> run_build.sh
+            echo 'python3 -m buildozer android debug' >> run_build.sh
+            chmod +x run_build.sh
+
+            ./run_build.sh
 
       # 3️⃣ Renomeia o APK com versão e data
       - name: Rename APK
@@ -52,4 +54,3 @@ jobs:
         with:
           name: Entregas-APK
           path: bin/*.apk
-
