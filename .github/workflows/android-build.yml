@@ -13,8 +13,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-        with:
-          submodules: false
 
       - name: Build APK inside Kivy Docker
         uses: addnab/docker-run-action@v3
@@ -26,9 +24,8 @@ jobs:
             echo "⚙️ Limpando build anterior..."
             rm -rf .buildozer bin
 
-            echo "🚀 Iniciando build (permitindo root via env var)..."
-            export BUILDOZER_ALLOW_ROOT=1
-            buildozer android debug
+            echo "🚀 Iniciando build com --allow-root (modo forçado)..."
+            python3 -m buildozer android debug --allow-root
 
       - name: Rename APK
         run: |
@@ -44,3 +41,4 @@ jobs:
         with:
           name: Entregas-APK
           path: bin/*.apk
+
