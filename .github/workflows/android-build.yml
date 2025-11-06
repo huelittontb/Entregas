@@ -23,6 +23,7 @@ jobs:
           options: -v ${{ github.workspace }}:/home/user/app
           run: |
             cd /home/user/app
+            export BUILDOZER_ALLOW_ROOT=1
             buildozer android debug
 
       # 3️⃣ Faz upload do APK gerado
