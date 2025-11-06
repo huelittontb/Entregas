@@ -41,6 +41,11 @@ jobs:
             BUILD_PATH=$(python3 -c "import buildozer, os; print(os.path.dirname(buildozer.__file__))")
             sed -i '/def check_root(self):/a\        return' "$BUILD_PATH/__init__.py"
 
+            echo "📦 Instalando SDK e aceitando licenças..."
+            yes | sdkmanager --licenses || true
+            yes | sdkmanager --update
+            yes | sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.1.0"
+
             echo "🚀 Compilando APK..."
             buildozer -v android debug || (echo "❌ Falha na compilação"; exit 1)
 
