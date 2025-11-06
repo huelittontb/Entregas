@@ -2,8 +2,7 @@ name: Build APK
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -12,20 +11,29 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Build APK (root com BUILDOZER_ALLOW_ROOT=1)
+      - name: Build APK with updated Buildozer
         uses: addnab/docker-run-action@v3
         with:
-          image: kivy/buildozer
-          options: -v ${{ github.workspace }}:/home/user/app -w /home/user/app
+          image: kivy/buildozer:latest
+          options: -v ${{ github.workspace }}:/home/user/app -w /home/user/app --user root
           run: |
             echo "⚙️ Limpando build anterior..."
             rm -rf .buildozer bin || true
 
-            echo "🚀 Forçando buildozer como root (sem prompt)..."
+            echo "⬇️ Atualizando Buildozer e dependências..."
+            pip install --upgrade pip buildozer==1.5.0
+
+            echo "🚀 Iniciando build como root (sem prompt)..."
             export BUILDOZER_ALLOW_ROOT=1
-            python3 -m buildozer android debug
+            python3 - <<'PYCODE'
+import os
+os.environ["BUILDOZER_ALLOW_ROOT"] = "1"
+from buildozer.scripts.client import main
+main()
+PYCODE
+            echo "✅ Build finalizado com sucesso."
 
       - name: Rename APK
         run: |
