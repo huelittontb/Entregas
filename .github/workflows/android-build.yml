@@ -49,3 +49,4 @@ PYCODE
         with:
           name: Entregas-APK
           path: bin/*.apk
+
