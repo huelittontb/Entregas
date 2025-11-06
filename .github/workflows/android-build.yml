@@ -38,12 +38,13 @@ jobs:
             pip install --upgrade pip buildozer
 
             echo "🩹 Aplicando patch para ignorar check_root()..."
-            sed -i 's/def check_root(self):/def check_root(self):\n        return/' $(python3 -c "import buildozer; import inspect; print(inspect.getfile(buildozer))") || true
+            BUILD_PATH=$(python3 -c "import buildozer, os; print(os.path.dirname(buildozer.__file__))")
+            sed -i '/def check_root(self):/a\        return' "$BUILD_PATH/__init__.py"
 
             echo "🚀 Compilando APK..."
-            buildozer -v android debug
+            buildozer -v android debug || (echo "❌ Falha na compilação"; exit 1)
 
-            echo "📦 Renomeando APK..."
+            echo "📦 Procurando APK gerado..."
             mkdir -p bin || true
             APK_PATH=$(find . -name "*.apk" | head -n 1)
             if [ -f "$APK_PATH" ]; then
