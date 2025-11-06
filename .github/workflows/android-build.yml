@@ -2,8 +2,7 @@ name: Build APK (Kivy + Buildozer)
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -14,18 +13,7 @@ jobs:
       - name: 🧱 Checkout código
         uses: actions/checkout@v4
 
-      - name: ⚡ Cache Buildozer & Gradle
-        uses: actions/cache@v4
-        with:
-          path: |
-            .buildozer
-            ~/.buildozer
-            ~/.gradle
-          key: buildozer-${{ runner.os }}-${{ hashFiles('**/buildozer.spec') }}
-          restore-keys: |
-            buildozer-${{ runner.os }}-
-
-      - name: 🐳 Build APK no container Buildozer
+      - name: 🐳 Build APK com Buildozer
         uses: addnab/docker-run-action@v3
         with:
           image: kivy/buildozer:latest
@@ -41,10 +29,14 @@ jobs:
             BUILD_PATH=$(python3 -c "import buildozer, os; print(os.path.dirname(buildozer.__file__))")
             sed -i '/def check_root(self):/a\        return' "$BUILD_PATH/__init__.py"
 
-            echo "📦 Instalando SDK e aceitando licenças..."
-            yes | sdkmanager --licenses || true
-            yes | sdkmanager --update
-            yes | sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.1.0"
+            echo "📦 Configurando SDK e aceitando licenças..."
+            export ANDROID_SDK_ROOT=/root/.buildozer/android/platform/android-sdk
+            mkdir -p $ANDROID_SDK_ROOT/cmdline-tools/latest/bin
+            export PATH=$PATH:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools
+
+            # Aceitar licenças e instalar ferramentas
+            yes | sdkmanager --sdk_root=$ANDROID_SDK_ROOT --licenses || true
+            yes | sdkmanager --sdk_root=$ANDROID_SDK_ROOT "platform-tools" "platforms;android-36" "build-tools;36.1.0"
 
             echo "🚀 Compilando APK..."
             buildozer -v android debug || (echo "❌ Falha na compilação"; exit 1)
@@ -65,13 +57,3 @@ jobs:
         with:
           name: app-release
           path: bin/app-release.apk
-
-      - name: 🏷️ Publicar Release automática
-        if: github.ref == 'refs/heads/main'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: "build-${{ github.run_number }}"
-          name: "Build #${{ github.run_number }}"
-          files: bin/app-release.apk
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
