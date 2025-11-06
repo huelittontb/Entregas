@@ -11,32 +11,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # 1️⃣ Checkout do repositório
       - name: Checkout repository
         uses: actions/checkout@v3
+
+      # 2️⃣ Usa o container oficial do Kivy com Buildozer pré-instalado
+      - name: Build with Buildozer Docker image
+        uses: addnab/docker-run-action@v3
         with:
-          submodules: recursive
+          image: kivy/buildozer
+          options: -v ${{ github.workspace }}:/home/user/app
+          run: |
+            cd /home/user/app
+            buildozer android debug
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-
-      - name: Install dependencies
-        run: |
-          sudo apt update
-          sudo apt install -y python3-pip git zip unzip openjdk-17-jdk
-          pip install --upgrade pip
-          pip install buildozer cython==0.29.36
-
-      - name: Build APK
-        env:
-          USE_SDK_WRAPPER: "yes"
-          BUILDOZER_WARN_ON_ROOT: "0"
-          GIT_SSL_NO_VERIFY: "1"
-        run: |
-          rm -rf .buildozer
-          buildozer android debug
-
+      # 3️⃣ Faz upload do APK gerado
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
