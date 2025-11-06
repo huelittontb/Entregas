@@ -26,8 +26,9 @@ jobs:
             echo "⚙️ Limpando build anterior..."
             rm -rf .buildozer bin
 
-            echo "🚀 Iniciando build (permitindo root)..."
-            buildozer --allow-root android debug
+            echo "🚀 Iniciando build (permitindo root via env var)..."
+            export BUILDOZER_ALLOW_ROOT=1
+            buildozer android debug
 
       - name: Rename APK
         run: |
@@ -43,4 +44,3 @@ jobs:
         with:
           name: Entregas-APK
           path: bin/*.apk
-
