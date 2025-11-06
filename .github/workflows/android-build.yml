@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: kivy/buildozer:latest
+
     steps:
       - name: 🧰 Checkout do código
         uses: actions/checkout@v4
@@ -21,18 +22,21 @@ jobs:
           echo "PATH=$PATH:$HOME/.local/bin:$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools" >> $GITHUB_ENV
 
       - name: 📦 Instalando dependências
+        shell: bash
         run: |
           python3 -m venv .venv
-          source .venv/bin/activate
+          . .venv/bin/activate
           pip install --upgrade pip
           pip install buildozer cython==0.29.37
 
       - name: 📥 Instalando Android SDK e NDK
+        shell: bash
         run: |
           export ANDROID_SDK_ROOT=$HOME/android-sdk
           export ANDROID_NDK_HOME=$HOME/android-ndk
           mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
           cd $ANDROID_SDK_ROOT/cmdline-tools
+
           echo "📦 Baixando Command Line Tools..."
           wget -q https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -O tools.zip
           unzip -q tools.zip
@@ -57,12 +61,14 @@ jobs:
           ln -sfn $ANDROID_NDK_HOME .buildozer/android/platform/android-ndk-r25b
 
       - name: 🧹 Limpando builds anteriores
+        shell: bash
         run: |
           rm -rf .buildozer bin
 
       - name: 🚀 Compilando APK
+        shell: bash
         run: |
-          source .venv/bin/activate
+          . .venv/bin/activate
           echo "📲 Iniciando buildozer..."
           buildozer -v android debug
 
