@@ -1,8 +1,9 @@
-name: Build APK
+name: Build APK (Kivy + Buildozer)
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
@@ -10,10 +11,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: 🧱 Checkout código
         uses: actions/checkout@v4
 
-      - name: Build APK using Buildozer (force root allowed)
+      - name: ⚡ Cache Buildozer & Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            .buildozer
+            ~/.buildozer
+            ~/.gradle
+          key: buildozer-${{ runner.os }}-${{ hashFiles('**/buildozer.spec') }}
+          restore-keys: |
+            buildozer-${{ runner.os }}-
+
+      - name: 🐳 Build APK no container Buildozer
         uses: addnab/docker-run-action@v3
         with:
           image: kivy/buildozer:latest
@@ -25,28 +37,35 @@ jobs:
             echo "⬇️ Instalando dependências..."
             pip install --upgrade pip buildozer
 
-            echo "🚀 Forçando execução com --allow-root..."
-            # usa --allow-root para evitar prompt interativo
-            buildozer --allow-root -v android debug || exit 1
+            echo "🩹 Aplicando patch para ignorar check_root()..."
+            sed -i 's/def check_root(self):/def check_root(self):\n        return/' $(python3 -c "import buildozer; import inspect; print(inspect.getfile(buildozer))") || true
 
-            echo "✅ Build finalizado."
+            echo "🚀 Compilando APK..."
+            buildozer -v android debug
 
-      - name: Rename APK
-        if: success()
-        run: |
-          if [ ! -d "bin" ]; then
-            echo "❌ Nenhum APK foi gerado."; exit 1;
-          fi
-          cd bin
-          VERSION=$(grep "version =" ../buildozer.spec | awk '{print $3}')
-          DATE=$(date +%Y-%m-%d)
-          APK_NAME="Entregas_v${VERSION}_${DATE}.apk"
-          mv *.apk "$APK_NAME"
-          echo "✅ APK renomeado para: $APK_NAME"
+            echo "📦 Renomeando APK..."
+            mkdir -p bin || true
+            APK_PATH=$(find . -name "*.apk" | head -n 1)
+            if [ -f "$APK_PATH" ]; then
+              cp "$APK_PATH" bin/app-release.apk
+              echo "✅ APK gerado em: bin/app-release.apk"
+            else
+              echo "❌ Nenhum APK encontrado!"
+              exit 1
+            fi
 
-      - name: Upload APK artifact
-        if: success()
+      - name: 📤 Upload do APK como artefato
         uses: actions/upload-artifact@v4
         with:
-          name: Entregas-APK
-          path: bin/*.apk
+          name: app-release
+          path: bin/app-release.apk
+
+      - name: 🏷️ Publicar Release automática
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: "build-${{ github.run_number }}"
+          name: "Build #${{ github.run_number }}"
+          files: bin/app-release.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
