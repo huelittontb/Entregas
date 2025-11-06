@@ -13,6 +13,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          submodules: recursive
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -27,7 +29,12 @@ jobs:
           pip install buildozer cython==0.29.36
 
       - name: Build APK
+        env:
+          USE_SDK_WRAPPER: "yes"
+          BUILDOZER_WARN_ON_ROOT: "0"
+          GIT_SSL_NO_VERIFY: "1"
         run: |
+          rm -rf .buildozer
           buildozer android debug
 
       - name: Upload APK artifact
